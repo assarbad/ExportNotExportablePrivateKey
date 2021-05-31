@@ -49,14 +49,16 @@ Windows 7 (32-bit, 64-bit)
 Release History:
 March 18, 2011 - v1.0 - First public release
 */
-#include "stdafx.h"
+#include "targetver.h"
 
+#include <cstdio>
 #include <iostream>
 #include <string>
 
-#include <WinCrypt.h>
 #include <Windows.h>
-#include <stdio.h>
+#include <tchar.h>
+
+#include <WinCrypt.h>
 
 using namespace std;
 
@@ -333,12 +335,12 @@ BOOL WINAPI CertEnumSystemStoreCallback(
             continue;
 #endif
             // Mark the certificate's private key as exportable
-            DWORD pKspKeyInLsass;
+            DWORD_PTR pKspKeyInLsass;
             SIZE_T sizeBytes;
             ReadProcessMemory(hProcess,
-                              (void*)(*(SIZE_T*)*(DWORD*)(hNKey + dwOffsetNKey) + dwOffsetSrvKeyInLsass),
+                              (void*)(*(SIZE_T*)*(DWORD_PTR*)(hNKey + dwOffsetNKey) + dwOffsetSrvKeyInLsass),
                               &pKspKeyInLsass,
-                              sizeof(DWORD),
+                              sizeof(DWORD_PTR),
                               &sizeBytes);
             unsigned char ucExportable;
             ReadProcessMemory(hProcess,
@@ -416,7 +418,7 @@ BOOL WINAPI CertEnumSystemStoreCallback(
 
         // Prepare the PFX's file name
         wchar_t wszFileName[MAX_PATH];
-        swprintf(wszFileName, _countof(wszFileName), L"%d.pfx", g_ulFileNumber++);
+        swprintf_s(wszFileName, _countof(wszFileName), L"%d.pfx", g_ulFileNumber++);
 
         // Write the PFX data blob to disk
         HANDLE hFile = CreateFile(wszFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
@@ -441,7 +443,7 @@ BOOL WINAPI CertEnumSystemStoreLocationCallback(LPCWSTR pvszStoreLocations,
     return TRUE;
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+int __cdecl _tmain(int argc, _TCHAR* argv[])
 {
     // Initialize g_ulFileNumber
     g_ulFileNumber = 1;
@@ -458,3 +460,14 @@ int _tmain(int argc, _TCHAR* argv[])
 
     return 0;
 }
+
+/*
+configuration {"x64"}
+prebuildcommands{"lib.exe /nologo /nodefaultlib \"/def:ntdll-stubs\\ntdll-delayed.txt\"
+\"/out:$(IntDir)\\ntdll-delayed.lib\" /machine:x64",}
+
+configuration {"x32"}
+prebuildcommands{"cl.exe /nologo /c /TC /Ob0 /Gz ntdll-stubs\\ntdll-delayed-stubs.c
+\"/Fo$(IntDir)\\ntdll-delayed-stubs.obj\"", "lib.exe /nologo \"/def:ntdll-stubs\\ntdll-delayed.txt\"
+\"/out:$(IntDir)\\ntdll-delayed.lib\" /machine:x86 \"$(IntDir)\\ntdll-delayed-stubs.obj\"",}
+*/

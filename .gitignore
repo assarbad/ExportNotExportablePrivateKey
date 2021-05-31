@@ -3,7 +3,13 @@
 **.sdf
 **.ilk
 **.user
+**.ncb
 ipch
 Debug
 Release
 .vs
+objchk_*
+objfre_*
+build*.err
+build*.log
+BuildLog.htm
