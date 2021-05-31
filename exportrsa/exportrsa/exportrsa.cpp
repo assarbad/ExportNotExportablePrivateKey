@@ -28,7 +28,7 @@ by Jason Geffner (jason.geffner@ngssecure.com)
 This program enumerates all certificates in all system stores in all system
 store locations and creates PFX files in the current directory for each
 certificate found that has a local associated RSA private key. Each PFX file
-created includes the ceritificate's private key, even if the private key was
+created includes the certificate's private key, even if the private key was
 marked as non-exportable.
 For access to CNG RSA private keys, this program must be run with write-access
 to the process that hosts the KeyIso service (the lsass.exe process). Either
@@ -54,8 +54,8 @@ March 18, 2011 - v1.0 - First public release
 #include <iostream>
 #include <string>
 
-#include <Windows.h>
 #include <WinCrypt.h>
+#include <Windows.h>
 #include <stdio.h>
 
 using namespace std;
@@ -72,67 +72,58 @@ using namespace std;
 unsigned long g_ulFileNumber;
 BOOL g_fWow64Process;
 
-wstring
-getpass(
-	const char *prompt,
-	bool show_asterisk=true)
+wstring getpass(const char* prompt, bool show_asterisk = true)
 {
-	const char BACKSPACE=8;
-	const char RETURN=13;
+    const char BACKSPACE = 8;
+    const char RETURN = 13;
 
-	wstring password;
-	unsigned char ch=0;
+    wstring password;
+    unsigned char ch = 0;
 
-	cout <<prompt << endl;
+    cout << prompt << endl;
 
-	DWORD con_mode;
-	DWORD dwRead;
+    DWORD con_mode;
+    DWORD dwRead;
 
-	HANDLE hIn=GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
 
-	GetConsoleMode( hIn, &con_mode );
-	SetConsoleMode( hIn, con_mode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT) );
+    GetConsoleMode(hIn, &con_mode);
+    SetConsoleMode(hIn, con_mode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
 
-	while( ReadConsoleA( hIn, &ch, 1, &dwRead, NULL) && ch !=RETURN )
-	{
-		if(ch==BACKSPACE)
-		{
-			if(password.length()!=0)
-			{
-				if(show_asterisk)
-					cout <<"\b \b";
-				password.resize(password.length()-1);
-			}
-		}
-		else
-		{
-			password+=ch;
-			if(show_asterisk)
-				cout <<'*';
-		}
-	}
-	cout <<endl;
-	return password;
+    while (ReadConsoleA(hIn, &ch, 1, &dwRead, NULL) && ch != RETURN)
+    {
+        if (ch == BACKSPACE)
+        {
+            if (password.length() != 0)
+            {
+                if (show_asterisk)
+                    cout << "\b \b";
+                password.resize(password.length() - 1);
+            }
+        }
+        else
+        {
+            password += ch;
+            if (show_asterisk)
+                cout << '*';
+        }
+    }
+    cout << endl;
+    return password;
 }
 
-BOOL WINAPI
-CertEnumSystemStoreCallback(
-        const void* pvSystemStore,
-        DWORD dwFlags,
-        PCERT_SYSTEM_STORE_INFO pStoreInfo,
-        void* pvReserved,
-        void* pvArg)
+BOOL WINAPI CertEnumSystemStoreCallback(
+    const void* pvSystemStore, DWORD dwFlags, PCERT_SYSTEM_STORE_INFO pStoreInfo, void* pvReserved, void* pvArg)
 {
     // Open a given certificate store
-    HCERTSTORE hCertStore = CertOpenStore(
-                CERT_STORE_PROV_SYSTEM,
-                0,
-                NULL,
-                dwFlags | CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG,
-                pvSystemStore);
+    HCERTSTORE hCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+                                          0,
+                                          NULL,
+                                          dwFlags | CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG,
+                                          pvSystemStore);
     if (NULL == hCertStore)
     {
-        //fprintf(stderr, "Cannot open cert store. Skip it: %X\n", GetLastError());
+        // fprintf(stderr, "Cannot open cert store. Skip it: %X\n", GetLastError());
         return TRUE;
     }
 
@@ -140,8 +131,7 @@ CertEnumSystemStoreCallback(
     LPTSTR dwCertName = NULL;
     DWORD cbSize;
 
-    for (PCCERT_CONTEXT pCertContext = CertEnumCertificatesInStore(hCertStore, NULL);
-         NULL != pCertContext;
+    for (PCCERT_CONTEXT pCertContext = CertEnumCertificatesInStore(hCertStore, NULL); NULL != pCertContext;
          pCertContext = CertEnumCertificatesInStore(hCertStore, pCertContext))
     {
         if (dwCertName)
@@ -149,33 +139,19 @@ CertEnumSystemStoreCallback(
             free(dwCertName);
         }
 
-        if(!(cbSize = CertGetNameString(
-            pCertContext,
-            CERT_NAME_SIMPLE_DISPLAY_TYPE,
-            0,
-            NULL,
-            NULL,
-            0)))
+        if (!(cbSize = CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, NULL, 0)))
         {
-           fprintf(stderr, "CertGetName size failed.");
+            fprintf(stderr, "CertGetName size failed.");
         }
         dwCertName = (LPTSTR)malloc(cbSize * sizeof(TCHAR));
 
-        if(!CertGetNameString(
-            pCertContext,
-            CERT_NAME_SIMPLE_DISPLAY_TYPE,
-            0,
-            NULL,
-            dwCertName,
-            cbSize))
+        if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, dwCertName, cbSize))
         {
             fprintf(stderr, "CertGetName failed.");
         }
 
         // Ensure that the certificate's public key is RSA
-        if (strncmp(pCertContext->pCertInfo->SubjectPublicKeyInfo.Algorithm.pszObjId,
-                    szOID_RSA,
-                    strlen(szOID_RSA)))
+        if (strncmp(pCertContext->pCertInfo->SubjectPublicKeyInfo.Algorithm.pszObjId, szOID_RSA, strlen(szOID_RSA)))
         {
             fprintf(stderr, "Skip cert with NO rsa public key for %S\n", dwCertName);
             continue;
@@ -184,13 +160,9 @@ CertEnumSystemStoreCallback(
         // Ensure that the certificate's private key is available
         DWORD dwKeySpec;
         DWORD dwKeySpecSize = sizeof(dwKeySpec);
-        if (!CertGetCertificateContextProperty(
-                    pCertContext,
-                    CERT_KEY_SPEC_PROP_ID,
-                    &dwKeySpec,
-                    &dwKeySpecSize))
+        if (!CertGetCertificateContextProperty(pCertContext, CERT_KEY_SPEC_PROP_ID, &dwKeySpec, &dwKeySpecSize))
         {
-            //fprintf(stderr, "Skip cert with NO private key for %S: %x\n", dwCertName, GetLastError());
+            // fprintf(stderr, "Skip cert with NO private key for %S: %x\n", dwCertName, GetLastError());
             continue;
         }
 
@@ -205,17 +177,16 @@ CertEnumSystemStoreCallback(
         NCRYPT_KEY_HANDLE hNKey;
 #endif
         BOOL fCallerFreeProvOrNCryptKey;
-        if (!CryptAcquireCertificatePrivateKey(
-                    pCertContext,
-                #ifdef WINCE
-                    0,
-                #else
-                    CRYPT_ACQUIRE_ALLOW_NCRYPT_KEY_FLAG,
-                #endif
-                    NULL,
-                    &hCryptProvOrNCryptKey,
-                    &dwKeySpec,
-                    &fCallerFreeProvOrNCryptKey))
+        if (!CryptAcquireCertificatePrivateKey(pCertContext,
+#ifdef WINCE
+                                               0,
+#else
+                                               CRYPT_ACQUIRE_ALLOW_NCRYPT_KEY_FLAG,
+#endif
+                                               NULL,
+                                               &hCryptProvOrNCryptKey,
+                                               &dwKeySpec,
+                                               &fCallerFreeProvOrNCryptKey))
         {
             fprintf(stderr, "Skip cert with NO private key handler for %S: %x\n", dwCertName, GetLastError());
             continue;
@@ -232,106 +203,87 @@ CertEnumSystemStoreCallback(
         if (CERT_NCRYPT_KEY_SPEC != dwKeySpec)
         {
             // This code path is for CryptoAPI
-            //fprintf(stdout, "Key for %S use CryptoAPI\n", dwCertName);
+            // fprintf(stdout, "Key for %S use CryptoAPI\n", dwCertName);
 
             // Retrieve a handle to the certificate's private key
-            if (!CryptGetUserKey(
-                        hProv,
-                        dwKeySpec,
-                        &hKey))
+            if (!CryptGetUserKey(hProv, dwKeySpec, &hKey))
             {
                 fprintf(stderr, "Cannot retrieve handle to the private key for %S\n", dwCertName);
                 continue;
             }
 
             // check if private key is exportable
-            if (!CryptExportKey(
-                      hKey,
-                      NULL,
-                      PRIVATEKEYBLOB,
-                      0,
-                      NULL,
-                      &cbData))
+            if (!CryptExportKey(hKey, NULL, PRIVATEKEYBLOB, 0, NULL, &cbData))
             {
-                fprintf(stderr, "Private key for cert \"%S\" is not exportable: %x\n", dwCertName, GetLastError() );
+                fprintf(stderr, "Private key for cert \"%S\" is not exportable: %x\n", dwCertName, GetLastError());
 
                 // Ask permission to the user to export cert
-                fprintf(stdout, "Do you really want to export Public/private key for cert \"%S\"\n[Y|N] (default N) >>>> ", dwCertName );
+                fprintf(stdout,
+                        "Do you really want to export Public/private key for cert \"%S\"\n[Y|N] (default N) >>>> ",
+                        dwCertName);
                 char response = ' ';
                 cin.clear();
                 cin.sync();
                 cin.get(response);
                 cin.clear();
                 cin.sync();
-                if ( response != 'Y' )
+                if (response != 'Y')
                 {
-                    fprintf(stdout, "Cert \"%S\" will be NOT exported\n\n", dwCertName );
+                    fprintf(stdout, "Cert \"%S\" will be NOT exported\n\n", dwCertName);
                     continue;
                 }
 
-                // Mark the certificate's private key as exportable and archivable
+                // Mark the certificate's private key as exportable and archiveable
                 *(ULONG_PTR*)(*(ULONG_PTR*)(*(ULONG_PTR*)
-                    #if defined(_M_X64)
-                        (hKey + 0x58) ^ 0xE35A172CD96214A0) + 0x0C)
-                    #elif (defined(_M_IX86) || defined(_ARM_))
-                        (hKey + 0x2C) ^ 0xE35A172C) + 0x08)
-                    #else
-                        #error Platform not supported
-                    #endif
-                        |= CRYPT_EXPORTABLE | CRYPT_ARCHIVABLE;
+#if defined(_M_X64)
+                                                (hKey + 0x58) ^
+                                            0xE35A172CD96214A0) +
+                              0x0C)
+#elif (defined(_M_IX86) || defined(_ARM_))
+                                                (hKey + 0x2C) ^
+                                            0xE35A172C) +
+                              0x08)
+#else
+#error Platform not supported
+#endif
+                    |= CRYPT_EXPORTABLE | CRYPT_ARCHIVABLE;
 
                 // Export the private key
                 // first to retieve the lenght, then to retrieve data
-                if (!CryptExportKey(
-                          hKey,
-                          NULL,
-                          PRIVATEKEYBLOB,
-                          0,
-                          NULL,
-                          &cbData))
+                if (!CryptExportKey(hKey, NULL, PRIVATEKEYBLOB, 0, NULL, &cbData))
                 {
-                    fprintf(stderr, "Not able to get private key lenght for cert \"%S\": %x\n", dwCertName, GetLastError() );
+                    fprintf(
+                        stderr, "Not able to get private key lenght for cert \"%S\": %x\n", dwCertName, GetLastError());
                     continue;
                 }
             }
             pbData = (BYTE*)malloc(cbData);
 
-            if (!CryptExportKey(
-                      hKey,
-                      NULL,
-                      PRIVATEKEYBLOB,
-                      0,
-                      pbData,
-                      &cbData))
+            if (!CryptExportKey(hKey, NULL, PRIVATEKEYBLOB, 0, pbData, &cbData))
             {
-                fprintf(stderr, "Cannot export private key for for \"%S\": %x\n", dwCertName, GetLastError() );
+                fprintf(stderr, "Cannot export private key for for \"%S\": %x\n", dwCertName, GetLastError());
                 continue;
             }
 
-            fprintf(stdout, "\nSUCCESSFULLY get private key for \"%S\"\n", dwCertName );
+            fprintf(stdout, "\nSUCCESSFULLY get private key for \"%S\"\n", dwCertName);
 
             // Establish a temporary key container
-            if (!CryptAcquireContext(
-                        &hProvTemp,
-                        NULL,
-                        NULL,
-                        PROV_RSA_FULL,
-                        CRYPT_VERIFYCONTEXT | CRYPT_NEWKEYSET))
+            if (!CryptAcquireContext(&hProvTemp, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_NEWKEYSET))
             {
-                fprintf(stderr, "Cannot create temporary key container to store key for %S: %x\n", dwCertName, GetLastError() );
+                fprintf(stderr,
+                        "Cannot create temporary key container to store key for %S: %x\n",
+                        dwCertName,
+                        GetLastError());
                 continue;
             }
             // Import the private key into the temporary key container
             HCRYPTKEY hKeyNew;
-            if (!CryptImportKey(
-                        hProvTemp,
-                        pbData,
-                        cbData,
-                        0,
-                        CRYPT_EXPORTABLE,
-                        &hKeyNew))
+            if (!CryptImportKey(hProvTemp, pbData, cbData, 0, CRYPT_EXPORTABLE, &hKeyNew))
             {
-                fprintf(stderr, "Cannot import key in temporary key container to store key for \"%S\": %x\n", dwCertName, GetLastError() );
+                fprintf(stderr,
+                        "Cannot import key in temporary key container to store key for \"%S\": %x\n",
+                        dwCertName,
+                        GetLastError());
                 continue;
             }
         }
@@ -342,41 +294,29 @@ CertEnumSystemStoreCallback(
 
             // This code path is for CNG
             // Retrieve a handle to the Service Control Manager
-            SC_HANDLE hSCManager = OpenSCManager(
-                        NULL,
-                        NULL,
-                        SC_MANAGER_CONNECT);
+            SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
             // Retrieve a handle to the KeyIso service
-            SC_HANDLE hService = OpenService(
-                        hSCManager,
-                        L"KeyIso",
-                        SERVICE_QUERY_STATUS);
+            SC_HANDLE hService = OpenService(hSCManager, L"KeyIso", SERVICE_QUERY_STATUS);
             // Retrieve the status of the KeyIso process, including its Process
             // ID
             SERVICE_STATUS_PROCESS ssp;
             DWORD dwBytesNeeded;
             QueryServiceStatusEx(
-                        hService,
-                        SC_STATUS_PROCESS_INFO,
-                        (BYTE*)&ssp,
-                        sizeof(SERVICE_STATUS_PROCESS),
-                        &dwBytesNeeded);
+                hService, SC_STATUS_PROCESS_INFO, (BYTE*)&ssp, sizeof(SERVICE_STATUS_PROCESS), &dwBytesNeeded);
             // Open a read-write handle to the process hosting the KeyIso
             // service
-            HANDLE hProcess = OpenProcess(
-                        PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE,
-                        FALSE,
-                        ssp.dwProcessId);
+            HANDLE hProcess =
+                OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, FALSE, ssp.dwProcessId);
             // Prepare the structure offsets for accessing the appropriate
             // field
             DWORD dwOffsetNKey;
             DWORD dwOffsetSrvKeyInLsass;
             DWORD dwOffsetKspKeyInLsass;
-        #if defined(_M_X64)
+#if defined(_M_X64)
             dwOffsetNKey = 0x10;
             dwOffsetSrvKeyInLsass = 0x28;
             dwOffsetKspKeyInLsass = 0x28;
-        #elif defined(_M_IX86)
+#elif defined(_M_IX86)
             dwOffsetNKey = 0x08;
             if (!g_fWow64Process)
             {
@@ -388,179 +328,115 @@ CertEnumSystemStoreCallback(
                 dwOffsetSrvKeyInLsass = 0x28;
                 dwOffsetKspKeyInLsass = 0x28;
             }
-        #else
+#else
             // Platform not supported
             continue;
-        #endif
+#endif
             // Mark the certificate's private key as exportable
             DWORD pKspKeyInLsass;
             SIZE_T sizeBytes;
-            ReadProcessMemory(
-                        hProcess,
-                        (void*)(*(SIZE_T*)*(DWORD*)(hNKey + dwOffsetNKey) +
-                                dwOffsetSrvKeyInLsass),
-                        &pKspKeyInLsass,
-                        sizeof(DWORD),
-                        &sizeBytes);
+            ReadProcessMemory(hProcess,
+                              (void*)(*(SIZE_T*)*(DWORD*)(hNKey + dwOffsetNKey) + dwOffsetSrvKeyInLsass),
+                              &pKspKeyInLsass,
+                              sizeof(DWORD),
+                              &sizeBytes);
             unsigned char ucExportable;
-            ReadProcessMemory(
-                        hProcess,
-                        (void*)(pKspKeyInLsass + dwOffsetKspKeyInLsass),
-                        &ucExportable,
-                        sizeof(unsigned char),
-                        &sizeBytes);
+            ReadProcessMemory(hProcess,
+                              (void*)(pKspKeyInLsass + dwOffsetKspKeyInLsass),
+                              &ucExportable,
+                              sizeof(unsigned char),
+                              &sizeBytes);
             ucExportable |= NCRYPT_ALLOW_PLAINTEXT_EXPORT_FLAG;
-            WriteProcessMemory(
-                        hProcess,
-                        (void*)(pKspKeyInLsass + dwOffsetKspKeyInLsass),
-                        &ucExportable,
-                        sizeof(unsigned char),
-                        &sizeBytes);
+            WriteProcessMemory(hProcess,
+                               (void*)(pKspKeyInLsass + dwOffsetKspKeyInLsass),
+                               &ucExportable,
+                               sizeof(unsigned char),
+                               &sizeBytes);
             // Export the private key
-            SECURITY_STATUS ss = NCryptExportKey(
-                        hNKey,
-                        NULL,
-                        LEGACY_RSAPRIVATE_BLOB,
-                        NULL,
-                        NULL,
-                        0,
-                        &cbData,
-                        0);
+            SECURITY_STATUS ss = NCryptExportKey(hNKey, NULL, LEGACY_RSAPRIVATE_BLOB, NULL, NULL, 0, &cbData, 0);
             pbData = (BYTE*)malloc(cbData);
-            ss = NCryptExportKey(
-                        hNKey,
-                        NULL,
-                        LEGACY_RSAPRIVATE_BLOB,
-                        NULL,
-                        pbData,
-                        cbData,
-                        &cbData,
-                        0);
+            ss = NCryptExportKey(hNKey, NULL, LEGACY_RSAPRIVATE_BLOB, NULL, pbData, cbData, &cbData, 0);
             // Establish a temporary CNG key store provider
             NCRYPT_PROV_HANDLE hProvider;
-            NCryptOpenStorageProvider(
-                        &hProvider,
-                        MS_KEY_STORAGE_PROVIDER,
-                        0);
+            NCryptOpenStorageProvider(&hProvider, MS_KEY_STORAGE_PROVIDER, 0);
             // Import the private key into the temporary storage provider
             NCRYPT_KEY_HANDLE hKeyNew;
-            NCryptImportKey(
-                        hProvider,
-                        NULL,
-                        LEGACY_RSAPRIVATE_BLOB,
-                        NULL,
-                        &hKeyNew,
-                        pbData,
-                        cbData,
-                        0);
+            NCryptImportKey(hProvider, NULL, LEGACY_RSAPRIVATE_BLOB, NULL, &hKeyNew, pbData, cbData, 0);
         }
 #endif
 
         // ask for pwd to encrypt exported private key
-        wstring password  = getpass("Enter password to protect exported cert: ",true); // Show asterisks
-        wstring passwordCheck = getpass("Enter password again: ",true); // Show asterisks
-        if( password != passwordCheck )
+        wstring password = getpass("Enter password to protect exported cert: ", true); // Show asterisks
+        wstring passwordCheck = getpass("Enter password again: ", true);               // Show asterisks
+        if (password != passwordCheck)
         {
-            fprintf(stderr, "Password mismatch, SKIP exporting\n\n" );
+            fprintf(stderr, "Password mismatch, SKIP exporting\n\n");
             continue;
         }
 
         // Create a temporary certificate store in memory
-        HCERTSTORE hMemoryStore = CertOpenStore(
-                    CERT_STORE_PROV_MEMORY,
-                    PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
-                    NULL,
-                    0,
-                    NULL);
+        HCERTSTORE hMemoryStore =
+            CertOpenStore(CERT_STORE_PROV_MEMORY, PKCS_7_ASN_ENCODING | X509_ASN_ENCODING, NULL, 0, NULL);
 
-        // Add a link to the certificate to our tempoary certificate store
+        // Add a link to the certificate to our temporary certificate store
         PCCERT_CONTEXT pCertContextNew = NULL;
-        CertAddCertificateLinkToStore(
-                    hMemoryStore,
-                    pCertContext,
-                    CERT_STORE_ADD_NEW,
-                    &pCertContextNew);
+        CertAddCertificateLinkToStore(hMemoryStore, pCertContext, CERT_STORE_ADD_NEW, &pCertContextNew);
 
         // Set the key container for the linked certificate to be our temporary
         // key container
-        CertSetCertificateContextProperty(
-                    pCertContext,
-            #ifdef WINCE
-                    CERT_KEY_PROV_HANDLE_PROP_ID,
-            #else
-                    CERT_HCRYPTPROV_OR_NCRYPT_KEY_HANDLE_PROP_ID,
-            #endif
-                    0,
-            #ifdef WINCE
-                    (void*)hProvTemp);
-            #else
-                    (void*)((CERT_NCRYPT_KEY_SPEC == dwKeySpec) ?
-                                hNKey : hProvTemp));
-            #endif
+        CertSetCertificateContextProperty(pCertContext,
+#ifdef WINCE
+                                          CERT_KEY_PROV_HANDLE_PROP_ID,
+#else
+                                          CERT_HCRYPTPROV_OR_NCRYPT_KEY_HANDLE_PROP_ID,
+#endif
+                                          0,
+#ifdef WINCE
+                                          (void*)hProvTemp);
+#else
+                                          (void*)((CERT_NCRYPT_KEY_SPEC == dwKeySpec) ? hNKey : hProvTemp));
+#endif
 
         // Export the temporary certificate store to a PFX data blob in memory
         CRYPT_DATA_BLOB cdb;
         cdb.cbData = 0;
         cdb.pbData = NULL;
-        PFXExportCertStoreEx(
-                    hMemoryStore,
-                    &cdb,
-                    password.c_str(),
-                    NULL,
-                    EXPORT_PRIVATE_KEYS | REPORT_NO_PRIVATE_KEY
-                    | REPORT_NOT_ABLE_TO_EXPORT_PRIVATE_KEY);
+        PFXExportCertStoreEx(hMemoryStore,
+                             &cdb,
+                             password.c_str(),
+                             NULL,
+                             EXPORT_PRIVATE_KEYS | REPORT_NO_PRIVATE_KEY | REPORT_NOT_ABLE_TO_EXPORT_PRIVATE_KEY);
         cdb.pbData = (BYTE*)malloc(cdb.cbData);
 
-        PFXExportCertStoreEx(
-                    hMemoryStore,
-                    &cdb,
-                    password.c_str(),
-                    NULL,
-                    EXPORT_PRIVATE_KEYS | REPORT_NO_PRIVATE_KEY
-                    | REPORT_NOT_ABLE_TO_EXPORT_PRIVATE_KEY);
+        PFXExportCertStoreEx(hMemoryStore,
+                             &cdb,
+                             password.c_str(),
+                             NULL,
+                             EXPORT_PRIVATE_KEYS | REPORT_NO_PRIVATE_KEY | REPORT_NOT_ABLE_TO_EXPORT_PRIVATE_KEY);
 
         // Prepare the PFX's file name
         wchar_t wszFileName[MAX_PATH];
-        swprintf(   wszFileName,
-                    L"%d.pfx",
-                    g_ulFileNumber++);
+        swprintf(wszFileName, _countof(wszFileName), L"%d.pfx", g_ulFileNumber++);
 
         // Write the PFX data blob to disk
-        HANDLE hFile = CreateFile(
-                    wszFileName,
-                    GENERIC_WRITE,
-                    0,
-                    NULL,
-                    CREATE_ALWAYS,
-                    0,
-                    NULL);
+        HANDLE hFile = CreateFile(wszFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
         DWORD dwBytesWritten;
 
-        WriteFile(  hFile,
-                    cdb.pbData,
-                    cdb.cbData,
-                    &dwBytesWritten,
-                    NULL);
+        WriteFile(hFile, cdb.pbData, cdb.cbData, &dwBytesWritten, NULL);
         CloseHandle(hFile);
 
-		fprintf(stdout, "SUCCESSFULLY exported cert bundle for \"%S\"in file \"%S\" \n\n", dwCertName, wszFileName );
+        fprintf(stdout, "SUCCESSFULLY exported cert bundle for \"%S\"in file \"%S\" \n\n", dwCertName, wszFileName);
     }
     return TRUE;
 }
 
-BOOL WINAPI
-CertEnumSystemStoreLocationCallback(
-        LPCWSTR pvszStoreLocations,
-        DWORD dwFlags,
-        void* pvReserved,
-        void* pvArg)
+BOOL WINAPI CertEnumSystemStoreLocationCallback(LPCWSTR pvszStoreLocations,
+                                                DWORD dwFlags,
+                                                void* pvReserved,
+                                                void* pvArg)
 {
     // Enumerate all system stores in a given system store location
-    CertEnumSystemStore(
-                dwFlags,
-                NULL,
-                NULL,
-                CertEnumSystemStoreCallback);
+    CertEnumSystemStore(dwFlags, NULL, NULL, CertEnumSystemStoreCallback);
 
     return TRUE;
 }
@@ -571,19 +447,14 @@ int _tmain(int argc, _TCHAR* argv[])
     g_ulFileNumber = 1;
     // Determine if we're a 32-bit process running on a 64-bit OS
     g_fWow64Process = FALSE;
-    BOOL (WINAPI* IsWow64Process)(HANDLE, PBOOL) =
-            (BOOL (WINAPI*)(HANDLE, PBOOL))GetProcAddress(
-                GetModuleHandle(L"kernel32.dll"), "IsWow64Process");
+    BOOL(WINAPI * IsWow64Process)
+    (HANDLE, PBOOL) = (BOOL(WINAPI*)(HANDLE, PBOOL))GetProcAddress(GetModuleHandle(L"kernel32.dll"), "IsWow64Process");
     if (NULL != IsWow64Process)
     {
-        IsWow64Process( GetCurrentProcess(),
-                        &g_fWow64Process);
+        IsWow64Process(GetCurrentProcess(), &g_fWow64Process);
     }
     // Scan all system store locations
-    CertEnumSystemStoreLocation(
-                0,
-                NULL,
-                CertEnumSystemStoreLocationCallback);
+    CertEnumSystemStoreLocation(0, NULL, CertEnumSystemStoreLocationCallback);
 
     return 0;
 }
